@@ -94,7 +94,7 @@ static async Task SeedAsync(IServiceProvider services, IConfiguration config)
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-    foreach (var role in new[] { "Admin", "Agent" })
+    foreach (var role in Enum.GetNames<UserRole>())
     {
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole(role));
@@ -113,6 +113,6 @@ static async Task SeedAsync(IServiceProvider services, IConfiguration config)
         };
         var result = await userManager.CreateAsync(admin, adminPassword);
         if (result.Succeeded)
-            await userManager.AddToRoleAsync(admin, "Admin");
+            await userManager.AddToRoleAsync(admin, nameof(UserRole.Admin));
     }
 }
