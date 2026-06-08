@@ -20,5 +20,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(u => u.AssignedTickets)
             .HasForeignKey(t => t.AssignedToId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<UserSession>()
+            .HasIndex(s => s.ExpiresAt)
+            .HasFilter("[ExpiresAt] IS NOT NULL");
+
+        builder.Entity<UserSession>()
+            .HasIndex(s => s.UserId)
+            .HasFilter("[UserId] IS NOT NULL");
     }
 }

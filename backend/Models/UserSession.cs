@@ -7,6 +7,8 @@ public class UserSession
     [Key]
     [MaxLength(128)]
     public string Id { get; set; } = "";
+    [MaxLength(450)]
+    public string? UserId { get; set; }
     public string TicketValue { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }

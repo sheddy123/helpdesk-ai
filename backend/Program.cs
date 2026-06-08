@@ -16,9 +16,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
-    options.Password.RequiredLength = 8;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
+    options.Password.RequiredLength = 12;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     options.User.RequireUniqueEmail = true;
@@ -58,7 +58,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "https://localhost:3000")
+        policy.WithOrigins("https://localhost:3000")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -101,7 +101,8 @@ static async Task SeedAsync(IServiceProvider services, IConfiguration config)
     }
 
     var adminEmail = config["AdminSeed:Email"] ?? "admin@helpdesk.local";
-    var adminPassword = config["AdminSeed:Password"] ?? "Admin@12345";
+    var adminPassword = config["AdminSeed:Password"]
+        ?? throw new InvalidOperationException("AdminSeed:Password must be set in configuration (use dotnet user-secrets).");
 
     if (await userManager.FindByEmailAsync(adminEmail) is null)
     {

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using HelpdeskAi.Data;
 using HelpdeskAi.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -19,9 +20,11 @@ public class DatabaseTicketStore : ITicketStore
         await using var scope = _serviceProvider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        var userId = ticket.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
         var session = new UserSession
         {
             Id = Guid.NewGuid().ToString("N"),
+            UserId = userId,
             TicketValue = Serialize(ticket),
             CreatedAt = DateTimeOffset.UtcNow,
             ExpiresAt = ticket.Properties.ExpiresUtc
@@ -53,7 +56,17 @@ public class DatabaseTicketStore : ITicketStore
 
         var session = await db.UserSessions.FindAsync(key);
         if (session is null) return null;
-        if (session.ExpiresAt.HasValue && session.ExpiresAt.Value < DateTimeOffset.UtcNow) return null;
+
+        var now = DateTimeOffset.UtcNow;
+        var expired = (session.ExpiresAt.HasValue && session.ExpiresAt.Value < now)
+                   || now > session.CreatedAt.AddDays(30);
+
+        if (expired)
+        {
+            db.UserSessions.Remove(session);
+            await db.SaveChangesAsync();
+            return null;
+        }
 
         return Deserialize(session.TicketValue);
     }
