@@ -17,11 +17,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // cancelled flag prevents stale callbacks (React StrictMode double-invokes effects;
+    // without this, the first effect's fetch can call setUser after the second one finishes)
+    let cancelled = false;
     fetch('/api/auth/me', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
-      .then(data => setUser(data))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+      .then(data => { if (!cancelled) setUser(data); })
+      .catch(() => { if (!cancelled) setUser(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   async function login(email: string, password: string) {
@@ -32,8 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error((data as { error?: string }).error ?? 'Login failed');
+      let msg = 'Login failed';
+      try {
+        const json = await res.json();
+        msg = (json as { error?: string; message?: string }).error ?? json.message ?? msg;
+      } catch {}
+      throw new Error(msg);
     }
     const data: AuthUser = await res.json();
     setUser(data);
