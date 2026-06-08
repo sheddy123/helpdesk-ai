@@ -115,4 +115,21 @@ static async Task SeedAsync(IServiceProvider services, IConfiguration config)
         if (result.Succeeded)
             await userManager.AddToRoleAsync(admin, nameof(UserRole.Admin));
     }
+
+    var agentEmail = config["AgentSeed:Email"];
+    var agentPassword = config["AgentSeed:Password"];
+
+    if (agentEmail is not null && agentPassword is not null
+        && await userManager.FindByEmailAsync(agentEmail) is null)
+    {
+        var agent = new ApplicationUser
+        {
+            UserName = agentEmail,
+            Email = agentEmail,
+            EmailConfirmed = true
+        };
+        var result = await userManager.CreateAsync(agent, agentPassword);
+        if (result.Succeeded)
+            await userManager.AddToRoleAsync(agent, nameof(UserRole.Agent));
+    }
 }

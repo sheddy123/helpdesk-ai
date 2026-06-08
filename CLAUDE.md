@@ -8,13 +8,30 @@ An AI-powered ticket management system that ingests support emails, classifies t
 
 ```
 helpdesk-ai/
-├── backend/                  # ASP.NET Core 10 Web API (C#)
+├── backend/                        # ASP.NET Core 10 Web API (C#)
 │   ├── HelpdeskAi.csproj
-│   ├── ClientApp/            # React + Vite (TypeScript) frontend
-│   └── appsettings.json
-├── project-scope.md          # Product requirements
-├── tech-stack.md             # Technology decisions
-└── implementation-plan.md   # Phased build plan (checkbox checklist)
+│   ├── appsettings.json
+│   ├── Auth/
+│   │   └── DatabaseTicketStore.cs  # ITicketStore — persists auth sessions to MSSQL
+│   └── ClientApp/                  # React + Vite (TypeScript) frontend
+│       ├── components.json         # shadcn/ui config (default style, neutral theme)
+│       ├── vite.config.ts          # @tailwindcss/vite plugin, @ path alias → src/
+│       ├── tsconfig.app.json       # paths: { "@/*": ["./src/*"] }
+│       └── src/
+│           ├── index.css           # Tailwind v4 import + shadcn CSS variables (@theme inline)
+│           ├── lib/utils.ts        # cn() helper (clsx + tailwind-merge)
+│           ├── components/ui/      # shadcn components (Button, Input, Label, Card)
+│           ├── contexts/
+│           │   └── AuthContext.tsx # useAuth() — user, loading, login, logout
+│           ├── components/
+│           │   ├── ProtectedRoute.tsx
+│           │   └── Layout.tsx      # nav shell for authenticated pages
+│           └── pages/
+│               ├── LoginPage.tsx   # shadcn Card + Label + Input + Button
+│               └── HomePage.tsx
+├── project-scope.md                # Product requirements
+├── tech-stack.md                   # Technology decisions
+└── implementation-plan.md          # Phased build plan (checkbox checklist)
 ```
 
 ## Tech Stack
@@ -85,6 +102,24 @@ cd backend && dotnet ef database update
 
 Use **context7** (`mcp__context7__resolve-library-id` + `mcp__context7__query-docs`) to fetch current documentation for any library or framework used in this project — ASP.NET Core, EF Core, Hangfire, Resend SDK, Brevo, Anthropic SDK, OpenAI SDK, shadcn/ui, Tailwind, Vite, React Router — before writing integration code. Always prefer context7 over recalled training data for API specifics.
 
+## Frontend Notes
+
+**Tailwind v4** — configured via `@tailwindcss/vite` plugin. There is no `tailwind.config.js`; all theme tokens live in `src/index.css` using `@theme inline` and CSS custom properties (oklch format).
+
+**shadcn/ui** — manually initialized (the CLI fails on Windows with a workspace detection error). To add a new component:
+1. Copy the component source from the shadcn docs/registry into `src/components/ui/`
+2. Install any required Radix package (`@radix-ui/react-*`) via npm
+3. Do NOT run `npx shadcn add` — it will fail
+
+**Path alias** — `@` resolves to `src/` in both Vite and TypeScript.
+
 ## Implementation Progress
 
-See `implementation-plan.md` for the full phase-by-phase checklist. Current state: Phase 1 scaffolding is in place (backend project + ClientApp exist).
+See `implementation-plan.md` for the full phase-by-phase checklist.
+
+| Phase | Status | Notes |
+|---|---|---|
+| 1 — Scaffolding | Done | Backend + ClientApp created |
+| 2 — Auth backend | Done | Identity, EF Core sessions, `/api/auth/*` endpoints |
+| 3 — Auth frontend | Done | `AuthContext`, `ProtectedRoute`, `Layout`, login page |
+| 4+ | Not started | Ticket ingestion, dashboard, RAG, Hangfire |
