@@ -67,7 +67,14 @@ public class DatabaseTicketStore : ITicketStore
         if (session is null) return;
 
         db.UserSessions.Remove(session);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            // Session was already removed by a concurrent request — desired state achieved.
+        }
     }
 
     private static string Serialize(AuthenticationTicket ticket)
