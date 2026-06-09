@@ -93,6 +93,13 @@ cd backend && dotnet run
 # Run frontend dev server (from repo root)
 cd backend/ClientApp && npm run dev
 
+# Component tests (from backend/ClientApp)
+npm run test:component          # run once
+npm run test:component:watch    # watch mode
+
+# E2E tests (from backend/ClientApp)
+npm run test:e2e
+
 # EF migrations
 cd backend && dotnet ef migrations add <Name>
 cd backend && dotnet ef database update
@@ -116,6 +123,28 @@ Use **context7** (`mcp__context7__resolve-library-id` + `mcp__context7__query-do
 **HTTP client** — use **axios** for all API calls (`withCredentials: true` on every request — the backend uses HTTP-only cookies). Never use the native `fetch` API.
 
 **Server state** — use **TanStack Query** (`useQuery` / `useMutation`) for all data fetching and mutation. Never manage server state with `useState` + `useEffect`. `QueryClientProvider` is mounted in `main.tsx`. Update the cache via `queryClient.setQueryData` on successful mutations instead of triggering a refetch. Use `staleTime: Infinity` for data that only changes through explicit mutations (e.g. auth session).
+
+## Component Testing
+
+**Stack** — Vitest + React Testing Library + MSW. Tests live alongside the component they test (`Foo.test.tsx` next to `Foo.tsx`). Run with `npm run test:component` from `backend/ClientApp`.
+
+**Test infrastructure** (`src/test/`):
+- `setup.ts` — imports `@testing-library/jest-dom` and manages the MSW server lifecycle (`beforeAll` / `afterEach` / `afterAll`)
+- `server.ts` — MSW `setupServer` with default happy-path handlers; import `server` and `http`/`HttpResponse` from here to override handlers per test
+
+**Writing tests:**
+- Wrap the component under test in a fresh `QueryClient` (with `retry: false`) and `MemoryRouter` — create a local `renderPage()` helper in each test file rather than a shared global wrapper
+- Mock API calls with MSW handlers, not `vi.mock('axios')` — MSW intercepts at the network level so tests exercise the real axios + TanStack Query wiring
+- Override handlers inline with `server.use(http.get(...))` for error/edge-case tests; MSW resets handlers after each test automatically
+- Use `await screen.findBy*` to wait for async data to appear; use `within(row)` to scope assertions to a specific table row
+- Test what the user sees and can do — rendered text, badge labels, button presence/absence, form validation messages — not internal state or implementation details
+
+**What to test per page:**
+1. Loading state — page chrome visible immediately, data absent
+2. Success state — all data rendered correctly
+3. Empty state — empty message rendered
+4. Error state — API failure shows error message
+5. Mutations — success updates the UI; server error surfaces in the form; cancel/close works
 
 ## Implementation Progress
 
