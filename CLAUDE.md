@@ -38,7 +38,7 @@ helpdesk-ai/
 
 | Layer | Technology |
 |---|---|
-| Frontend | React + Vite (TypeScript), React Router, Tailwind CSS, shadcn/ui |
+| Frontend | React + Vite (TypeScript), React Router, Tailwind CSS, shadcn/ui, axios, TanStack Query |
 | Backend | ASP.NET Core 10 Web API (C#), Entity Framework Core |
 | Database | SQL Server (MSSQL) — tickets, users, sessions, embeddings |
 | AI | Claude API (Anthropic) — classify, summarize, auto-reply |
@@ -112,6 +112,10 @@ Use **context7** (`mcp__context7__resolve-library-id` + `mcp__context7__query-do
 3. Do NOT run `npx shadcn add` — it will fail
 
 **Path alias** — `@` resolves to `src/` in both Vite and TypeScript.
+
+**HTTP client** — use **axios** for all API calls (`withCredentials: true` on every request — the backend uses HTTP-only cookies). Never use the native `fetch` API.
+
+**Server state** — use **TanStack Query** (`useQuery` / `useMutation`) for all data fetching and mutation. Never manage server state with `useState` + `useEffect`. `QueryClientProvider` is mounted in `main.tsx`. Update the cache via `queryClient.setQueryData` on successful mutations instead of triggering a refetch. Use `staleTime: Infinity` for data that only changes through explicit mutations (e.g. auth session).
 
 ## Implementation Progress
 

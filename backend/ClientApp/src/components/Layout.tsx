@@ -10,7 +10,7 @@ export default function Layout() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-6">
-              <span className="text-base font-semibold text-gray-900">Helpdesk AI</span>
+              <NavLink to="/" className="text-base font-semibold text-gray-900 hover:text-gray-700 transition-colors">Helpdesk AI</NavLink>
               {user?.roles.includes('Admin') && (
                 <NavLink
                   to="/users"

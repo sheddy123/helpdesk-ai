@@ -1,6 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import type { AuthUser } from '../types/auth';
 
 interface AuthContextValue {
@@ -13,43 +15,46 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    // cancelled flag prevents stale callbacks (React StrictMode double-invokes effects;
-    // without this, the first effect's fetch can call setUser after the second one finishes)
-    let cancelled = false;
-    fetch('/api/auth/me', { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => { if (!cancelled) setUser(data); })
-      .catch(() => { if (!cancelled) setUser(null); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const { data: user = null, isLoading: loading } = useQuery<AuthUser | null>({
+    queryKey: ['auth-me'],
+    queryFn: () =>
+      axios.get<AuthUser>('/api/auth/me', { withCredentials: true })
+        .then(res => res.data)
+        .catch(() => null),
+    retry: false,
+    staleTime: Infinity,
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      axios.post<AuthUser>('/api/auth/login', { email, password }, { withCredentials: true })
+        .then(res => res.data),
+    onSuccess: data => queryClient.setQueryData(['auth-me'], data),
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: () =>
+      axios.post('/api/auth/logout', null, { withCredentials: true }),
+    onSuccess: () => queryClient.setQueryData(['auth-me'], null),
+  });
 
   async function login(email: string, password: string) {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
+    try {
+      await loginMutation.mutateAsync({ email, password });
+    } catch (err) {
       let msg = 'Login failed';
-      try {
-        const json = await res.json();
-        msg = (json as { error?: string; message?: string }).error ?? json.message ?? msg;
-      } catch {}
+      if (axios.isAxiosError(err)) {
+        const body = err.response?.data as { error?: string; message?: string } | undefined;
+        msg = body?.error ?? body?.message ?? msg;
+      }
       throw new Error(msg);
     }
-    const data: AuthUser = await res.json();
-    setUser(data);
   }
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    setUser(null);
+    await logoutMutation.mutateAsync();
   }
 
   return (

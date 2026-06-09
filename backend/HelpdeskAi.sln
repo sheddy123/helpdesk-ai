@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11612.150 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelpdeskAi", "HelpdeskAi.csproj", "{BC47B21E-7250-6135-AB71-6AE10218B9C4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BC47B21E-7250-6135-AB71-6AE10218B9C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC47B21E-7250-6135-AB71-6AE10218B9C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC47B21E-7250-6135-AB71-6AE10218B9C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC47B21E-7250-6135-AB71-6AE10218B9C4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {28253721-DC58-4C99-B6F8-5466E2D6330F}
+	EndGlobalSection
+EndGlobal

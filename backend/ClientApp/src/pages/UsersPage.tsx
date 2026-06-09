@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import axios from 'axios';
 import type { AgentUser } from '../types/user';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,9 +26,7 @@ const createSchema = z.object({
 type CreateForm = z.infer<typeof createSchema>;
 
 export default function UsersPage() {
-  const [agents, setAgents] = useState<AgentUser[]>([]);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const {
@@ -36,16 +37,32 @@ export default function UsersPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateForm>({ resolver: zodResolver(createSchema) });
 
-  useEffect(() => {
-    fetch('/api/users', { credentials: 'include' })
-      .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json() as Promise<AgentUser[]>;
-      })
-      .then(setAgents)
-      .catch(() => setPageError('Failed to load agents.'))
-      .finally(() => setPageLoading(false));
-  }, []);
+  const { data: agents = [], isLoading: pageLoading, isError: pageError } = useQuery<AgentUser[]>({
+    queryKey: ['users'],
+    queryFn: () =>
+      axios.get<AgentUser[]>('/api/users', { withCredentials: true }).then(res => res.data),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateForm) =>
+      axios.post<AgentUser>('/api/users', data, { withCredentials: true }).then(res => res.data),
+    onSuccess: created => {
+      queryClient.setQueryData<AgentUser[]>(['users'], prev =>
+        [...(prev ?? []), created].sort((a, b) => a.userName.localeCompare(b.userName))
+      );
+      closeDialog();
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) =>
+      axios.delete(`/api/users/${id}`, { withCredentials: true }),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<AgentUser[]>(['users'], prev =>
+        prev?.map(a => a.id === id ? { ...a, isActive: false } : a)
+      );
+    },
+  });
 
   function closeDialog() {
     setDialogOpen(false);
@@ -53,41 +70,14 @@ export default function UsersPage() {
   }
 
   async function onCreate(data: CreateForm) {
-    const res = await fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({})) as { errors?: string[] };
-      setError('root', { message: body.errors?.[0] ?? 'Failed to create agent.' });
-      return;
+    try {
+      await createMutation.mutateAsync(data);
+    } catch (err) {
+      const body = axios.isAxiosError(err)
+        ? (err.response?.data as { errors?: string[] } | undefined)
+        : undefined;
+      setError('root', { message: body?.errors?.[0] ?? 'Failed to create agent.' });
     }
-
-    const created = await res.json() as AgentUser;
-    setAgents(prev => [...prev, created].sort((a, b) => a.userName.localeCompare(b.userName)));
-    closeDialog();
-  }
-
-  async function onDeactivate(id: string) {
-    const res = await fetch(`/api/users/${id}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) {
-      setAgents(prev => prev.map(a => a.id === id ? { ...a, isActive: false } : a));
-    }
-  }
-
-  if (pageLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-gray-800" />
-      </div>
-    );
-  }
-
-  if (pageError) {
-    return <p className="py-8 text-sm text-destructive">{pageError}</p>;
   }
 
   return (
@@ -157,8 +147,8 @@ export default function UsersPage() {
         </Dialog>
       </div>
 
-      {agents.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No agents yet. Add one to get started.</p>
+      {pageError ? (
+        <p className="py-8 text-sm text-destructive">Failed to load agents.</p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
@@ -171,30 +161,52 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {agents.map(agent => (
-                <tr key={agent.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 font-medium text-card-foreground">{agent.userName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{agent.email}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        agent.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {agent.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {agent.isActive && (
-                      <Button variant="outline" size="sm" onClick={() => onDeactivate(agent.id)}>
-                        Deactivate
-                      </Button>
-                    )}
+              {pageLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-44" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                    <td className="px-4 py-3 text-right"><Skeleton className="ml-auto h-8 w-20" /></td>
+                  </tr>
+                ))
+              ) : agents.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-sm text-muted-foreground">
+                    No agents yet. Add one to get started.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                agents.map(agent => (
+                  <tr key={agent.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 font-medium text-card-foreground">{agent.userName}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{agent.email}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          agent.isActive
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {agent.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {agent.isActive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={deactivateMutation.isPending}
+                          onClick={() => deactivateMutation.mutate(agent.id)}
+                        >
+                          Deactivate
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
