@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import axios from 'axios';
+import { Pencil } from 'lucide-react';
 import type { AgentUser } from '../types/user';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,11 +24,23 @@ const createSchema = z.object({
   password: z.string().min(12, 'Password must be at least 12 characters'),
 });
 
+const editSchema = z.object({
+  email: z.string().email('Enter a valid email'),
+  userName: z.string().min(2, 'Username must be at least 2 characters'),
+  password: z.string().refine(
+    val => val === '' || val.length >= 12,
+    'Password must be at least 12 characters'
+  ),
+});
+
 type CreateForm = z.infer<typeof createSchema>;
+type EditForm = z.infer<typeof editSchema>;
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<AgentUser | null>(null);
 
   const {
     register,
@@ -36,6 +49,14 @@ export default function UsersPage() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<CreateForm>({ resolver: zodResolver(createSchema) });
+
+  const {
+    register: editRegister,
+    handleSubmit: editHandleSubmit,
+    reset: editReset,
+    setError: editSetError,
+    formState: { errors: editErrors, isSubmitting: editIsSubmitting },
+  } = useForm<EditForm>({ resolver: zodResolver(editSchema) });
 
   const { data: agents = [], isLoading: pageLoading, isError: pageError } = useQuery<AgentUser[]>({
     queryKey: ['users'],
@@ -50,7 +71,22 @@ export default function UsersPage() {
       queryClient.setQueryData<AgentUser[]>(['users'], prev =>
         [...(prev ?? []), created].sort((a, b) => a.userName.localeCompare(b.userName))
       );
-      closeDialog();
+      closeCreateDialog();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: EditForm }) =>
+      axios.put<AgentUser>(
+        `/api/users/${id}`,
+        { userName: data.userName, email: data.email, ...(data.password ? { password: data.password } : {}) },
+        { withCredentials: true }
+      ).then(res => res.data),
+    onSuccess: updated => {
+      queryClient.setQueryData<AgentUser[]>(['users'], prev =>
+        prev?.map(a => a.id === updated.id ? updated : a)
+      );
+      closeEditDialog();
     },
   });
 
@@ -64,9 +100,31 @@ export default function UsersPage() {
     },
   });
 
-  function closeDialog() {
-    setDialogOpen(false);
+  const activateMutation = useMutation({
+    mutationFn: (id: string) =>
+      axios.patch(`/api/users/${id}/activate`, null, { withCredentials: true }),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<AgentUser[]>(['users'], prev =>
+        prev?.map(a => a.id === id ? { ...a, isActive: true } : a)
+      );
+    },
+  });
+
+  function closeCreateDialog() {
+    setCreateDialogOpen(false);
     reset();
+  }
+
+  function openEditDialog(agent: AgentUser) {
+    setEditingAgent(agent);
+    editReset({ email: agent.email, userName: agent.userName, password: '' });
+    setEditDialogOpen(true);
+  }
+
+  function closeEditDialog() {
+    setEditDialogOpen(false);
+    setEditingAgent(null);
+    editReset();
   }
 
   async function onCreate(data: CreateForm) {
@@ -80,11 +138,23 @@ export default function UsersPage() {
     }
   }
 
+  async function onEdit(data: EditForm) {
+    if (!editingAgent) return;
+    try {
+      await updateMutation.mutateAsync({ id: editingAgent.id, data });
+    } catch (err) {
+      const body = axios.isAxiosError(err)
+        ? (err.response?.data as { errors?: string[] } | undefined)
+        : undefined;
+      editSetError('root', { message: body?.errors?.[0] ?? 'Failed to update agent.' });
+    }
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Agents</h1>
-        <Dialog open={dialogOpen} onOpenChange={open => { if (!open) closeDialog(); else setDialogOpen(true); }}>
+        <Dialog open={createDialogOpen} onOpenChange={open => { if (!open) closeCreateDialog(); else setCreateDialogOpen(true); }}>
           <DialogTrigger asChild>
             <Button>Add Agent</Button>
           </DialogTrigger>
@@ -135,7 +205,7 @@ export default function UsersPage() {
                 <p className="text-sm text-destructive">{errors.root.message}</p>
               )}
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeDialog}>
+                <Button type="button" variant="outline" onClick={closeCreateDialog}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
@@ -147,6 +217,67 @@ export default function UsersPage() {
         </Dialog>
       </div>
 
+      {/* Edit dialog — rendered outside the table so it's not nested in a <tr> */}
+      <Dialog open={editDialogOpen} onOpenChange={open => { if (!open) closeEditDialog(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Agent</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={editHandleSubmit(onEdit)} className="mt-4 space-y-4" noValidate>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                autoComplete="off"
+                aria-invalid={!!editErrors.email}
+                {...editRegister('email')}
+              />
+              {editErrors.email && (
+                <p className="text-xs text-destructive">{editErrors.email.message}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-userName">Username</Label>
+              <Input
+                id="edit-userName"
+                autoComplete="off"
+                aria-invalid={!!editErrors.userName}
+                {...editRegister('userName')}
+              />
+              {editErrors.userName && (
+                <p className="text-xs text-destructive">{editErrors.userName.message}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-password">New Password</Label>
+              <Input
+                id="edit-password"
+                type="password"
+                autoComplete="new-password"
+                aria-invalid={!!editErrors.password}
+                {...editRegister('password')}
+              />
+              <p className="text-xs text-muted-foreground">Leave blank to keep current password.</p>
+              {editErrors.password && (
+                <p className="text-xs text-destructive">{editErrors.password.message}</p>
+              )}
+            </div>
+            {editErrors.root && (
+              <p className="text-sm text-destructive">{editErrors.root.message}</p>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={closeEditDialog}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={editIsSubmitting}>
+                {editIsSubmitting ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {pageError ? (
         <p className="py-8 text-sm text-destructive">Failed to load agents.</p>
       ) : (
@@ -157,7 +288,7 @@ export default function UsersPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Username</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -192,17 +323,36 @@ export default function UsersPage() {
                         {agent.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      {agent.isActive && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          disabled={deactivateMutation.isPending}
-                          onClick={() => deactivateMutation.mutate(agent.id)}
+                          onClick={() => openEditDialog(agent)}
+                          aria-label={`Edit ${agent.userName}`}
                         >
-                          Deactivate
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                      )}
+                        {agent.isActive ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={deactivateMutation.isPending}
+                            onClick={() => deactivateMutation.mutate(agent.id)}
+                          >
+                            Deactivate
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={activateMutation.isPending}
+                            onClick={() => activateMutation.mutate(agent.id)}
+                          >
+                            Activate
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

@@ -6,6 +6,7 @@ public class Ticket
     public required string SenderEmail { get; set; }
     public required string Subject { get; set; }
     public required string Body { get; set; }
+    public string? MessageId { get; set; }
     public TicketStatus Status { get; set; } = TicketStatus.Open;
     public TicketCategory? Category { get; set; }
     public string? AssignedToId { get; set; }

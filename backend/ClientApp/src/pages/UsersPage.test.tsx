@@ -63,13 +63,14 @@ describe('UsersPage', () => {
       expect(within(carolRow).getByText('Inactive')).toBeInTheDocument();
     });
 
-    it('shows Deactivate button only for active agents', async () => {
+    it('shows Deactivate for active agents and Activate for inactive agents', async () => {
       renderPage();
       await screen.findByText('alice');
       const aliceRow = screen.getByText('alice').closest('tr')!;
       const carolRow = screen.getByText('carol').closest('tr')!;
       expect(within(aliceRow).getByRole('button', { name: 'Deactivate' })).toBeInTheDocument();
       expect(within(carolRow).queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument();
+      expect(within(carolRow).getByRole('button', { name: 'Activate' })).toBeInTheDocument();
     });
   });
 
@@ -139,6 +140,54 @@ describe('UsersPage', () => {
     });
   });
 
+  describe('edit agent', () => {
+    beforeEach(async () => {
+      renderPage();
+      await screen.findByText('alice');
+      const aliceRow = screen.getByText('alice').closest('tr')!;
+      await userEvent.click(within(aliceRow).getByRole('button', { name: /edit alice/i }));
+    });
+
+    it('opens the edit dialog with pre-populated values', () => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByLabelText('Email')).toHaveValue('alice@example.com');
+      expect(screen.getByLabelText('Username')).toHaveValue('alice');
+      expect(screen.getByLabelText('New Password')).toHaveValue('');
+    });
+
+    it('updates the agent in the list on success', async () => {
+      const emailInput = screen.getByLabelText('Email');
+      await userEvent.clear(emailInput);
+      await userEvent.type(emailInput, 'alice2@example.com');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(screen.getByText('alice2@example.com')).toBeInTheDocument();
+    });
+
+    it('shows server error when update fails', async () => {
+      server.use(
+        http.put('/api/users/:id', () =>
+          HttpResponse.json({ errors: ['Username already taken'] }, { status: 400 })
+        )
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(await screen.findByText('Username already taken')).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('shows validation error for a short new password', async () => {
+      await userEvent.type(screen.getByLabelText('New Password'), 'short');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(await screen.findByText(/at least 12 characters/i)).toBeInTheDocument();
+    });
+
+    it('closes dialog on Cancel', async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+  });
+
   describe('deactivate agent', () => {
     it('marks the agent as inactive after deactivation', async () => {
       renderPage();
@@ -150,6 +199,22 @@ describe('UsersPage', () => {
         expect(within(aliceRow).getByText('Inactive')).toBeInTheDocument()
       );
       expect(within(aliceRow).queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument();
+      expect(within(aliceRow).getByRole('button', { name: 'Activate' })).toBeInTheDocument();
+    });
+  });
+
+  describe('activate agent', () => {
+    it('marks the agent as active after activation', async () => {
+      renderPage();
+      await screen.findByText('carol');
+      const carolRow = screen.getByText('carol').closest('tr')!;
+      await userEvent.click(within(carolRow).getByRole('button', { name: 'Activate' }));
+
+      await waitFor(() =>
+        expect(within(carolRow).getByText('Active')).toBeInTheDocument()
+      );
+      expect(within(carolRow).queryByRole('button', { name: 'Activate' })).not.toBeInTheDocument();
+      expect(within(carolRow).getByRole('button', { name: 'Deactivate' })).toBeInTheDocument();
     });
   });
 });

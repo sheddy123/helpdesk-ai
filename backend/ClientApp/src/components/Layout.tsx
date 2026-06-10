@@ -11,6 +11,14 @@ export default function Layout() {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-6">
               <NavLink to="/" className="text-base font-semibold text-gray-900 hover:text-gray-700 transition-colors">Helpdesk AI</NavLink>
+              <NavLink
+                to="/tickets"
+                className={({ isActive }) =>
+                  `text-sm ${isActive ? 'text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-900'} transition-colors`
+                }
+              >
+                Tickets
+              </NavLink>
               {user?.roles.includes('Admin') && (
                 <NavLink
                   to="/users"

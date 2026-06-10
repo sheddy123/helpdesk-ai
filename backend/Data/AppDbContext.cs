@@ -21,6 +21,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(t => t.AssignedToId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.Entity<Ticket>()
+            .HasIndex(t => t.MessageId)
+            .IsUnique()
+            .HasFilter("[MessageId] IS NOT NULL");
+
         builder.Entity<UserSession>()
             .HasIndex(s => s.ExpiresAt)
             .HasFilter("[ExpiresAt] IS NOT NULL");

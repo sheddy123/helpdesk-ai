@@ -56,7 +56,27 @@ public class UsersController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
+        if (!string.IsNullOrEmpty(request.Password))
+        {
+            await _userManager.RemovePasswordAsync(user);
+            var pwResult = await _userManager.AddPasswordAsync(user, request.Password);
+            if (!pwResult.Succeeded)
+                return BadRequest(new { errors = pwResult.Errors.Select(e => e.Description) });
+        }
+
         return Ok(ToDto(user));
+    }
+
+    [HttpPatch("{id}/activate")]
+    public async Task<IActionResult> Activate(string id)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null || !await _userManager.IsInRoleAsync(user, nameof(UserRole.Agent)))
+            return NotFound();
+
+        user.IsActive = true;
+        await _userManager.UpdateAsync(user);
+        return NoContent();
     }
 
     [HttpDelete("{id}")]
@@ -77,4 +97,4 @@ public class UsersController : ControllerBase
 
 public record UserDto(string Id, string Email, string UserName, bool IsActive);
 public record CreateAgentRequest(string Email, string UserName, string Password);
-public record UpdateAgentRequest(string UserName, string Email);
+public record UpdateAgentRequest(string UserName, string Email, string? Password);
