@@ -3,12 +3,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import DOMPurify from 'dompurify';
-import { ChevronLeft, ChevronRight, ChevronsUpDown, Check, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsUpDown, Check, Loader2, Sparkles } from 'lucide-react';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { TicketStatus, TicketCategory, type TicketDetail, type TicketReply } from '../types/ticket';
 import { type AgentOption } from '../types/user';
 import { useAuth } from '../contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+
+const openai = createOpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY ?? '',
+  dangerouslyAllowBrowser: true,
+});
 
 const STATUS_STYLES: Record<TicketStatus, string> = {
   [TicketStatus.Open]:     'bg-amber-100 text-amber-700',
@@ -316,6 +323,27 @@ export default function TicketDetailPage() {
   });
 
   const [replyBody, setReplyBody] = useState('');
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [polishError, setPolishError] = useState<string | null>(null);
+
+  async function handlePolish() {
+    setPolishError(null);
+    setIsPolishing(true);
+    try {
+      const { text } = await generateText({
+        model: openai('gpt-5-nano'),
+        system: 'You are a professional customer support agent. Improve the given draft reply to be clearer, more professional, and more empathetic. Return only the improved reply text with no additional commentary.',
+        prompt: replyBody.trim(),
+      });
+      setReplyBody(text);
+    } catch (err) {
+      console.error('[Polish]', err);
+      const msg = err instanceof Error ? err.message : 'Failed to polish reply. Please try again.';
+      setPolishError(msg);
+    } finally {
+      setIsPolishing(false);
+    }
+  }
 
   const replyMutation = useMutation({
     mutationFn: (body: string) =>
@@ -576,14 +604,28 @@ export default function TicketDetailPage() {
                     disabled={replyMutation.isPending}
                     className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   />
-                  {replyMutation.isError && (
-                    <p className="text-xs text-destructive">Failed to send reply. Please try again.</p>
+                  {(replyMutation.isError || polishError) && (
+                    <p className="text-xs text-destructive">
+                      {polishError ?? 'Failed to send reply. Please try again.'}
+                    </p>
                   )}
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!replyBody.trim() || isPolishing || replyMutation.isPending}
+                      onClick={handlePolish}
+                    >
+                      {isPolishing
+                        ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        : <Sparkles className="mr-2 h-3.5 w-3.5" />}
+                      {isPolishing ? 'Polishing…' : 'Polish'}
+                    </Button>
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={!replyBody.trim() || replyMutation.isPending}
+                      disabled={!replyBody.trim() || replyMutation.isPending || isPolishing}
                     >
                       {replyMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                       {replyMutation.isPending ? 'Sending…' : 'Send Reply'}

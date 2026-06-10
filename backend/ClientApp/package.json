@@ -15,12 +15,14 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.69",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-dialog": "^1.1.16",
     "@radix-ui/react-label": "^2.1.9",
     "@radix-ui/react-slot": "^1.2.5",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-table": "^8.21.3",
+    "ai": "^6.0.199",
     "axios": "^1.17.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
