@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import DOMPurify from 'dompurify';
 import { ChevronLeft, ChevronRight, ChevronsUpDown, Check, Loader2 } from 'lucide-react';
-import { TicketStatus, TicketCategory, type TicketDetail } from '../types/ticket';
+import { TicketStatus, TicketCategory, type TicketDetail, type TicketReply } from '../types/ticket';
 import { type AgentOption } from '../types/user';
 import { useAuth } from '../contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -308,6 +308,26 @@ export default function TicketDetailPage() {
     },
   });
 
+  const { data: replies = [] } = useQuery<TicketReply[]>({
+    queryKey: ['ticket-replies', id],
+    queryFn: () =>
+      axios.get<TicketReply[]>(`/api/tickets/${id}/replies`, { withCredentials: true }).then(r => r.data),
+    enabled: !!id,
+  });
+
+  const [replyBody, setReplyBody] = useState('');
+
+  const replyMutation = useMutation({
+    mutationFn: (body: string) =>
+      axios
+        .post<TicketReply>(`/api/tickets/${id}/replies`, { body }, { withCredentials: true })
+        .then(r => r.data),
+    onSuccess: newReply => {
+      queryClient.setQueryData<TicketReply[]>(['ticket-replies', id], prev => [...(prev ?? []), newReply]);
+      setReplyBody('');
+    },
+  });
+
   return (
     <div className="mx-auto max-w-3xl">
       {/* Top bar: back link + prev/next arrows */}
@@ -496,6 +516,83 @@ export default function TicketDetailPage() {
               </pre>
             </section>
           )}
+
+          {/* Thread + Reply form */}
+          <section className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-4 py-2.5">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {replies.length > 0 ? `Thread (${replies.length})` : 'Reply'}
+              </h2>
+            </div>
+
+            {replies.length > 0 && (
+              <div className="max-h-[480px] overflow-y-auto py-4">
+                {replies.map((reply, index) => (
+                  <div key={reply.id} className="flex gap-3 px-4">
+                    <div className="flex flex-col items-center">
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${reply.senderType === 'Agent' ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
+                        {(reply.authorName ?? 'C')[0].toUpperCase()}
+                      </span>
+                      {index < replies.length - 1 && (
+                        <div className="mt-1 w-px flex-1 bg-border" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 pb-5">
+                      <div className="mb-1.5 flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-card-foreground">
+                          {reply.authorName ?? 'Customer'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(reply.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                        </span>
+                      </div>
+                      <pre className="whitespace-pre-wrap break-words font-sans text-sm text-card-foreground">
+                        {reply.body}
+                      </pre>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {ticket.status === TicketStatus.Closed ? (
+              <p className={`px-4 py-3 text-xs text-muted-foreground ${replies.length > 0 ? 'border-t border-border' : ''}`}>
+                This ticket is closed. Change the status to reply.
+              </p>
+            ) : (
+              <div className={replies.length > 0 ? 'border-t border-border p-4' : 'p-4'}>
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (replyBody.trim()) replyMutation.mutate(replyBody.trim());
+                  }}
+                  className="space-y-3"
+                >
+                  <textarea
+                    value={replyBody}
+                    onChange={e => setReplyBody(e.target.value)}
+                    placeholder="Write a reply…"
+                    rows={4}
+                    disabled={replyMutation.isPending}
+                    className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  {replyMutation.isError && (
+                    <p className="text-xs text-destructive">Failed to send reply. Please try again.</p>
+                  )}
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!replyBody.trim() || replyMutation.isPending}
+                    >
+                      {replyMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      {replyMutation.isPending ? 'Sending…' : 'Send Reply'}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </section>
         </div>
       ) : null}
     </div>

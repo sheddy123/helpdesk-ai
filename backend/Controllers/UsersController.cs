@@ -1,21 +1,17 @@
+using HelpdeskAi.Data;
 using HelpdeskAi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace HelpdeskAi.Controllers;
 
 [ApiController]
 [Route("api/users")]
 [Authorize(Roles = nameof(UserRole.Admin))]
-public class UsersController : ControllerBase
+public class UsersController(UserManager<ApplicationUser> _userManager, AppDbContext db) : ControllerBase
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-
-    public UsersController(UserManager<ApplicationUser> userManager)
-    {
-        _userManager = userManager;
-    }
 
     [HttpGet]
     public async Task<IActionResult> List()
@@ -85,6 +81,10 @@ public class UsersController : ControllerBase
         var user = await _userManager.FindByIdAsync(id);
         if (user is null || !await _userManager.IsInRoleAsync(user, nameof(UserRole.Agent)))
             return NotFound();
+
+        await db.Tickets
+            .Where(t => t.AssignedToId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.AssignedToId, (string?)null));
 
         user.IsActive = false;
         await _userManager.UpdateAsync(user);

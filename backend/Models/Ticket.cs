@@ -15,6 +15,7 @@ public class Ticket
     public string? AiSuggestedReply { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ResolvedAt { get; set; }
+    public ICollection<TicketReply> Replies { get; set; } = [];
 }
 
 public enum TicketStatus { Open, Resolved, Closed }

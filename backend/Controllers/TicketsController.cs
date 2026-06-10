@@ -163,6 +163,74 @@ public class TicketsController(AppDbContext db, UserManager<ApplicationUser> use
         return Ok(new TicketsPageDto(items, totalCount, page, pageSize));
     }
 
+    [HttpGet("{id:int}/replies")]
+    public async Task<IActionResult> GetReplies(int id)
+    {
+        var ticket = await db.Tickets.FindAsync(id);
+        if (ticket is null) return NotFound();
+
+        if (User.IsInRole(nameof(UserRole.Agent)))
+        {
+            var callerId = userManager.GetUserId(User);
+            if (ticket.AssignedToId != callerId) return Forbid();
+        }
+
+        var replies = await db.TicketReplies
+            .Include(r => r.Author)
+            .Where(r => r.TicketId == id)
+            .OrderBy(r => r.CreatedAt)
+            .Select(r => new TicketReplyDto(
+                r.Id,
+                r.Body,
+                r.AuthorId,
+                r.Author != null ? r.Author.UserName : null,
+                r.SenderType.ToString(),
+                r.CreatedAt
+            ))
+            .ToListAsync();
+
+        return Ok(replies);
+    }
+
+    [HttpPost("{id:int}/replies")]
+    public async Task<IActionResult> AddReply(int id, [FromBody] AddReplyRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Body))
+            return BadRequest(new { error = "Reply body is required." });
+
+        var ticket = await db.Tickets.FindAsync(id);
+        if (ticket is null) return NotFound();
+
+        if (ticket.Status == TicketStatus.Closed)
+            return UnprocessableEntity(new { error = "Cannot reply to a closed ticket." });
+
+        if (User.IsInRole(nameof(UserRole.Agent)))
+        {
+            var callerId = userManager.GetUserId(User);
+            if (ticket.AssignedToId != callerId) return Forbid();
+        }
+
+        var authorId = userManager.GetUserId(User)!;
+        var author   = await userManager.FindByIdAsync(authorId);
+
+        var reply = new TicketReply
+        {
+            TicketId   = id,
+            AuthorId   = authorId,
+            Body       = request.Body.Trim(),
+            SenderType = ReplySenderType.Agent,
+        };
+
+        db.TicketReplies.Add(reply);
+        await db.SaveChangesAsync();
+        reply.Author = author;
+
+        return Created(
+            $"/api/tickets/{id}/replies/{reply.Id}",
+            new TicketReplyDto(reply.Id, reply.Body, reply.AuthorId, author?.UserName, reply.SenderType.ToString(), reply.CreatedAt)
+        );
+    }
+
     private static TicketDetailDto ToDetailDto(Ticket t) => new(
         t.Id,
         t.SenderEmail,
@@ -194,6 +262,8 @@ public record TicketDetailDto(
     DateTimeOffset? ResolvedAt
 );
 
+public record TicketReplyDto(int Id, string Body, string? AuthorId, string? AuthorName, string SenderType, DateTimeOffset CreatedAt);
+public record AddReplyRequest(string Body);
 public record UpdateStatusRequest(string Status);
 public record UpdateCategoryRequest(string? Category);
 public record AssignRequest(string? AgentId);

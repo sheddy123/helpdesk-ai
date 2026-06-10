@@ -9,6 +9,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<Ticket> Tickets => Set<Ticket>();
+    public DbSet<TicketReply> TicketReplies => Set<TicketReply>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -25,6 +26,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasIndex(t => t.MessageId)
             .IsUnique()
             .HasFilter("[MessageId] IS NOT NULL");
+
+        builder.Entity<TicketReply>()
+            .HasOne(r => r.Ticket)
+            .WithMany(t => t.Replies)
+            .HasForeignKey(r => r.TicketId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<TicketReply>()
+            .HasOne(r => r.Author)
+            .WithMany()
+            .HasForeignKey(r => r.AuthorId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.Entity<UserSession>()
             .HasIndex(s => s.ExpiresAt)

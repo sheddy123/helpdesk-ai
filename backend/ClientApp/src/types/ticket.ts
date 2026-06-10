@@ -28,6 +28,17 @@ export interface TicketDetail extends Ticket {
   resolvedAt: string | null;
 }
 
+export type ReplySenderType = 'Agent' | 'Customer';
+
+export interface TicketReply {
+  id: number;
+  body: string;
+  authorId: string | null;
+  authorName: string | null;
+  senderType: ReplySenderType;
+  createdAt: string;
+}
+
 export interface TicketsPage {
   items: Ticket[];
   totalCount: number;
