@@ -84,10 +84,13 @@ export default function TicketsPage() {
     {
       accessorKey: 'subject',
       header: 'Subject',
-      cell: ({ getValue }) => (
-        <span className="block max-w-xs truncate font-medium text-card-foreground">
+      cell: ({ getValue, row }) => (
+        <Link
+          to={`/tickets/${row.original.id}`}
+          className="block max-w-xs truncate font-medium text-card-foreground hover:text-primary hover:underline"
+        >
           {getValue<string>()}
-        </span>
+        </Link>
       ),
     },
     {

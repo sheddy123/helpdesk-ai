@@ -20,6 +20,13 @@ export interface Ticket {
   createdAt: string;
 }
 
+export interface TicketDetail extends Ticket {
+  body: string;
+  aiSummary: string | null;
+  aiSuggestedReply: string | null;
+  resolvedAt: string | null;
+}
+
 export interface TicketsPage {
   items: Ticket[];
   totalCount: number;
