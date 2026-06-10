@@ -53,8 +53,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-sm">
-        <p className="mb-6 text-center text-xl font-semibold tracking-tight">
-          Helpdesk AI
+        <p className="mb-6 text-center font-serif text-xl font-semibold italic tracking-tight">
+          <span className="text-foreground">Helpdesk</span>{' '}
+          <span className="text-primary">AI</span>
         </p>
         <Card>
           <CardHeader>

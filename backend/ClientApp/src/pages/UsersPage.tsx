@@ -153,7 +153,7 @@ export default function UsersPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Agents</h1>
+        <h1 className="font-serif text-2xl font-semibold text-foreground">Agents</h1>
         <Dialog open={createDialogOpen} onOpenChange={open => { if (!open) closeCreateDialog(); else setCreateDialogOpen(true); }}>
           <DialogTrigger asChild>
             <Button>Add Agent</Button>
@@ -288,7 +288,7 @@ export default function UsersPage() {
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Username</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Actions</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -298,7 +298,7 @@ export default function UsersPage() {
                     <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-44" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
-                    <td className="px-4 py-3 text-right"><Skeleton className="ml-auto h-8 w-20" /></td>
+                    <td className="px-4 py-3 text-center"><Skeleton className="mx-auto h-8 w-20" /></td>
                   </tr>
                 ))
               ) : agents.length === 0 ? (
@@ -316,7 +316,7 @@ export default function UsersPage() {
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                           agent.isActive
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-green-500/15 text-green-400'
                             : 'bg-muted text-muted-foreground'
                         }`}
                       >
@@ -324,7 +324,7 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         <Button
                           variant="ghost"
                           size="sm"

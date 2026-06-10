@@ -17,8 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 
 const STATUS_STYLES: Record<TicketStatus, string> = {
-  [TicketStatus.Open]:     'bg-amber-100 text-amber-700',
-  [TicketStatus.Resolved]: 'bg-green-100 text-green-700',
+  [TicketStatus.Open]:     'bg-amber-500/15 text-amber-400',
+  [TicketStatus.Resolved]: 'bg-green-500/15 text-green-400',
   [TicketStatus.Closed]:   'bg-muted text-muted-foreground',
 };
 
@@ -119,7 +119,7 @@ export default function TicketsPage() {
       cell: ({ getValue }) => {
         const cat = getValue<TicketCategory | null>();
         return cat ? (
-          <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+          <span className="inline-flex items-center rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400">
             {CATEGORY_LABELS[cat]}
           </span>
         ) : (
@@ -168,7 +168,7 @@ export default function TicketsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Tickets</h1>
+        <h1 className="font-serif text-2xl font-semibold text-foreground">Tickets</h1>
       </div>
 
       {/* Filter bar */}

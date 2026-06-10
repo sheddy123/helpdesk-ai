@@ -2,6 +2,7 @@ import type { ElementType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { Inbox, Clock, Bot, TrendingUp, Timer } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
@@ -83,6 +84,8 @@ function SkeletonCard() {
 }
 
 export default function HomePage() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const { data, isLoading, isError } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () =>
@@ -97,7 +100,7 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <h1 className="font-serif text-2xl font-semibold text-foreground">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">Overview of your support queue</p>
       </div>
 
@@ -124,20 +127,20 @@ export default function HomePage() {
                 ? `${Math.round(data.openTickets / data.totalTickets * 100)}% of total`
                 : undefined}
               icon={Clock}
-              iconClass="bg-amber-100 text-amber-600"
+              iconClass="bg-amber-500/15 text-amber-400"
             />
             <StatCard
               label="Resolved by AI"
               value={data.resolvedByAi}
               icon={Bot}
-              iconClass="bg-green-100 text-green-600"
+              iconClass="bg-green-500/15 text-green-400"
             />
             <StatCard
               label="AI Resolution Rate"
               value={`${data.aiResolutionPercent}%`}
               sub="of all tickets"
               icon={TrendingUp}
-              iconClass="bg-blue-100 text-blue-600"
+              iconClass="bg-blue-500/15 text-blue-400"
             />
             <StatCard
               label="Avg Resolution Time"
@@ -148,7 +151,7 @@ export default function HomePage() {
                 ? 'open to resolved'
                 : 'no resolved tickets yet'}
               icon={Timer}
-              iconClass="bg-purple-100 text-purple-600"
+              iconClass="bg-purple-500/15 text-purple-400"
             />
           </>
         ) : null}
@@ -166,32 +169,37 @@ export default function HomePage() {
           ) : chartData ? (
             <ResponsiveContainer width="100%" height={224}>
               <BarChart data={chartData} barCategoryGap="30%">
-                <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid
+                  vertical={false}
+                  stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
+                />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  tick={{ fontSize: 11, fill: isDark ? '#9a8070' : '#78716c' }}
                   tickLine={false}
                   axisLine={false}
                   interval={4}
                 />
                 <YAxis
                   allowDecimals={false}
-                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  tick={{ fontSize: 11, fill: isDark ? '#9a8070' : '#78716c' }}
                   tickLine={false}
                   axisLine={false}
                   width={28}
                 />
                 <Tooltip
-                  cursor={{ fill: '#f8fafc' }}
+                  cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
                   contentStyle={{
                     fontSize: 12,
-                    borderRadius: 8,
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+                    borderRadius: 6,
+                    border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                    backgroundColor: isDark ? '#231610' : '#fffbf5',
+                    color: isDark ? '#f5efe4' : '#1a0d08',
+                    boxShadow: isDark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 4px 16px rgba(0,0,0,0.12)',
                   }}
                   formatter={(value: number) => [value, 'Tickets']}
                 />
-                <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill={isDark ? '#F97316' : '#059669'} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : null}

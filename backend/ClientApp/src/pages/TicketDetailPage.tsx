@@ -18,8 +18,8 @@ const openai = createOpenAI({
 });
 
 const STATUS_STYLES: Record<TicketStatus, string> = {
-  [TicketStatus.Open]:     'bg-amber-100 text-amber-700',
-  [TicketStatus.Resolved]: 'bg-green-100 text-green-700',
+  [TicketStatus.Open]:     'bg-amber-500/15 text-amber-400',
+  [TicketStatus.Resolved]: 'bg-green-500/15 text-green-400',
   [TicketStatus.Closed]:   'bg-muted text-muted-foreground',
 };
 
@@ -410,13 +410,13 @@ export default function TicketDetailPage() {
         <div className="space-y-5">
           {/* Subject + badges */}
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold leading-tight text-gray-900">{ticket.subject}</h1>
+            <h1 className="font-serif text-2xl font-semibold leading-tight text-foreground">{ticket.subject}</h1>
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[ticket.status]}`}>
                 {ticket.status}
               </span>
               {ticket.category ? (
-                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                <span className="inline-flex items-center rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-blue-400">
                   {CATEGORY_LABELS[ticket.category]}
                 </span>
               ) : (
