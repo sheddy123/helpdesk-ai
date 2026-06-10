@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,8 +10,9 @@ import {
   type PaginationState,
 } from '@tanstack/react-table';
 import axios from 'axios';
-import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, X, Search } from 'lucide-react';
 import { TicketStatus, TicketCategory, type Ticket, type TicketsPage } from '../types/ticket';
+import { useDebounce } from '../hooks/useDebounce';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 
@@ -34,6 +36,11 @@ export default function TicketsPage() {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
   const [filters, setFilters] = useState<Filters>({ status: '', category: '' });
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebounce(searchInput);
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [search]);
 
   const sortBy  = sorting[0]?.id ?? 'createdAt';
   const sortDir = (sorting[0]?.desc ?? true) ? 'desc' : 'asc';
@@ -46,13 +53,14 @@ export default function TicketsPage() {
 
   function clearFilters() {
     setFilters({ status: '', category: '' });
+    setSearchInput('');
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }
 
-  const hasActiveFilters = filters.status !== '' || filters.category !== '';
+  const hasActiveFilters = filters.status !== '' || filters.category !== '' || searchInput !== '';
 
   const { data, isLoading, isError } = useQuery<TicketsPage>({
-    queryKey: ['tickets', sortBy, sortDir, page, filters.status, filters.category],
+    queryKey: ['tickets', sortBy, sortDir, page, filters.status, filters.category, search],
     queryFn: () =>
       axios.get<TicketsPage>('/api/tickets', {
         params: {
@@ -62,6 +70,7 @@ export default function TicketsPage() {
           pageSize: PAGE_SIZE,
           ...(filters.status   && { status:   filters.status }),
           ...(filters.category && { category: filters.category }),
+          ...(search           && { search }),
         },
         withCredentials: true,
       }).then(r => r.data),
@@ -160,6 +169,17 @@ export default function TicketsPage() {
 
       {/* Filter bar */}
       <div className="mb-4 flex items-center gap-3">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            placeholder="Search subject or sender…"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            className="h-9 w-64 rounded-md border border-input bg-background py-1 pl-8 pr-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+
         <select
           value={filters.status}
           onChange={e => setFilter('status', e.target.value)}
