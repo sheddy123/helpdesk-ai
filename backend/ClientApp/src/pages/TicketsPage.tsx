@@ -84,9 +84,10 @@ export default function TicketsPage() {
     {
       accessorKey: 'subject',
       header: 'Subject',
-      cell: ({ getValue, row }) => (
+      cell: ({ getValue, row, table: t }) => (
         <Link
           to={`/tickets/${row.original.id}`}
+          state={{ ids: t.getRowModel().rows.map(r => r.original.id) }}
           className="block max-w-xs truncate font-medium text-card-foreground hover:text-primary hover:underline"
         >
           {getValue<string>()}

@@ -4,3 +4,8 @@ export interface AgentUser {
   userName: string;
   isActive: boolean;
 }
+
+export interface AgentOption {
+  id: string;
+  userName: string;
+}

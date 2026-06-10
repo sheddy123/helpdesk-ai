@@ -21,6 +21,7 @@ export interface Ticket {
 }
 
 export interface TicketDetail extends Ticket {
+  assignedToId: string | null;
   body: string;
   aiSummary: string | null;
   aiSuggestedReply: string | null;
